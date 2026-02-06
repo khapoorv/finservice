@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fincommerce-backend
+  labels:
+    app: fincommerce
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fincommerce
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: fincommerce
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/fincommerce/backend:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fincommerce-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: fincommerce-config
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: fincommerce-secrets
+                  key: jwt-secret
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fincommerce-analytics
+  labels:
+    app: fincommerce
+    component: analytics
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fincommerce
+      component: analytics
+  template:
+    metadata:
+      labels:
+        app: fincommerce
+        component: analytics
+    spec:
+      containers:
+        - name: analytics
+          image: ghcr.io/fincommerce/analytics:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fincommerce-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: fincommerce-config
+                  key: redis-url

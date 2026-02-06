@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fincommerce-config
+  labels:
+    app: fincommerce
+data:
+  redis-url: "redis://redis-service:6379"
+  log-level: "info"
+  node-env: "production"
+  analytics-url: "http://fincommerce-analytics:80"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fincommerce-nginx-config
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name fincommerce.io;
+
+      location /api/ {
+        proxy_pass http://fincommerce-backend:80/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+      }
+
+      location /analytics/ {
+        proxy_pass http://fincommerce-analytics:80/;
+        proxy_set_header Host $host;
+      }
+
+      location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+      }
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fincommerce-logs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

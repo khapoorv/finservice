@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=mongodb://mongo:27017/fincommerce
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - app-logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - fincommerce-net
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+    networks:
+      - fincommerce-net
+
+  analytics:
+    build: ./analytics
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/fincommerce
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - analytics-data:/app/data
+    networks:
+      - fincommerce-net
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - fincommerce-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - fincommerce-net
+
+volumes:
+  mongo-data:
+  redis-data:
+  app-logs:
+  analytics-data:
+
+networks:
+  fincommerce-net:
+    driver: bridge
